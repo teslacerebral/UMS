@@ -1,4 +1,5 @@
 package com.example.UMS.Config;
+
 import com.example.UMS.Services.UserDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -8,8 +9,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -21,22 +20,18 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
 import java.util.Collections;
 
-import static javax.management.Query.and;
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // Injected dependencies (implement or configure based on your JWT implementation)
     @Autowired
     private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
 
-
-    @Autowired
-    private AuthenticationManager authenticationManager;
-
     @Autowired
     private JwtRequestFilter jwtRequestFilter;
+
+    @Autowired
+    private UserDetailsServiceImpl userDetailsServiceImpl;
 
     @Bean
     public AuthenticationManager authenticationManagerBean() throws Exception {
@@ -51,10 +46,6 @@ public class SecurityConfig {
         return provider;
     }
 
-
-    @Autowired
-    private UserDetailsServiceImpl userDetailsServiceImpl;
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -62,21 +53,17 @@ public class SecurityConfig {
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         .ignoringRequestMatchers("/api/auth/register")
                         .ignoringRequestMatchers("/h2-console/**")
-                        .ignoringRequestMatchers("/api/system/token/**")// Disable CSRF protection for /api/auth/register'
-
+                        .ignoringRequestMatchers("/api/system/token/**")
                 )
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
-                        .requestMatchers("/api/system/token/**").permitAll()// Permit POST requests to /api/auth/register
-                        .anyRequest().authenticated() // Require authentication for all other requests
-
+                        .requestMatchers("/api/system/token/**").permitAll()
+                        .anyRequest().authenticated()
                 )
                 .headers(headers -> headers
-                        .httpStrictTransportSecurity(hsts -> hsts.disable()) // Optional: Disable HSTS if needed
-                        .frameOptions(frameOptions -> frameOptions
-                                .sameOrigin() // Allows frames from the same origin, adjust if needed
-                        )
+                        .httpStrictTransportSecurity(hsts -> hsts.disable())
+                        .frameOptions(frameOptions -> frameOptions.sameOrigin())
                 )
                 .exceptionHandling(exceptionHandling -> exceptionHandling
                         .authenticationEntryPoint(jwtAuthenticationEntryPoint)
@@ -87,13 +74,6 @@ public class SecurityConfig {
                 .addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-
-    // Configure user details service and password encoder (implement this method)
-    @Autowired
-    public void configureGlobalSecurity(AuthenticationManagerBuilder auth) throws Exception {
-        auth.userDetailsService(userDetailsServiceImpl).passwordEncoder(passwordEncoder());
     }
 
     @Bean
